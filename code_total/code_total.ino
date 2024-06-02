@@ -108,6 +108,8 @@ void setup() {
 
 int MCC_direction = 0;
 int MOR_direction = 0;
+unsigned long last_time_MCC = 0;
+unsigned long last_time_MOR = 0;
 // Macros pour simplifier les commandes des moteurs
 #define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
 #define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
@@ -137,6 +139,7 @@ void calibrate_MCC() {
   SERIAL_PRINT("Total time=");
   SERIAL_PRINTLN(percent_100);
   current_MCC_pos = percent_100;
+  actualisation_pos_MCC(&current_MCC_pos);
 }
 
 unsigned long MCC_to_percent(float percentage) {
@@ -151,8 +154,12 @@ unsigned long MCC_to_percent(float percentage) {
   return time_to_stop;
 }
 
-unsigned long actualisation_pos( int *l_current_MCC_pos) {
-  *l_current_MCC_pos = 0;
+unsigned long actualisation_pos_MCC( int *l_current_MCC_pos) {
+  unsigned long current_time = millis();
+  *l_current_MCC_pos =  *l_current_MCC_pos + MCC_direction*(current_time-last_time_MCC);
+  last_time_MCC = current_time;
+  SERIAL_PRINT("current MCC pos:");
+  SERIAL_PRINTLN(*l_current_MCC_pos);
 }
 
 // Variables pour la boucle principale
@@ -170,6 +177,10 @@ void loop() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
+  actualisation_pos_MCC(&current_MCC_pos);
+  delay(500);
+  actualisation_pos_MCC(&current_MCC_pos);
+  
   /*
   LED_matrix_score(score_team_R, score_team_B);
 
@@ -188,6 +199,7 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MCC(0);
   }
+  actualisation_pos_MCC(&current_MCC_pos);
 
   if( buttonStateMOR == 1) {
     // aucun bouton n'est pressé
@@ -200,7 +212,9 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MOR(0);
   }
-  delay(1000);
+  actualisation_pos_MCC(&current_MCC_pos);
+  delay(500);
+  actualisation_pos_MCC(&current_MCC_pos);
 }
 
 void Homing() {
@@ -329,6 +343,7 @@ void LED_matrix_score(int score_B, int score_R) {
 //   }
 // }
 
+/*
 int sensor_value = 200;
 void loop_moteur() {
   unsigned long currentMillis = millis();
@@ -358,6 +373,7 @@ void loop_moteur() {
     turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, 0);
   }
 }
+*/
 
 int IR_sensor(int stockage_detection, int list_IR[5]) {
   for (int i = 0; i < 5; i++) {
