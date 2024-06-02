@@ -106,9 +106,11 @@ void setup() {
   calibrate_MCC();
 }
 
+int MCC_direction = 0;
+int MOR_direction = 0;
 // Macros pour simplifier les commandes des moteurs
-#define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x)
-#define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x)
+#define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
+#define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
 
 #define SENS_DEPLACEMENT 1 // de face: 1 <=> + => droite ; - => droite
 #define SPEED_FACTOR_MCC 200
@@ -119,15 +121,15 @@ unsigned long percent_100 = 0;
 void calibrate_MCC() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
-  read_button(PIN_HOME_MOR, &buttonStateMOR);
   unsigned long starting_millis = millis();
   TURN_MCC(SPEED_FACTOR_MCC);
-  delay(500);
+  delay(5000);// necessary 500
+  read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
+  read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   while(buttonStateMCC1==1 && buttonStateMCC1 ==1) { 
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
-    read_button(PIN_HOME_MOR, &buttonStateMOR);
-    delay(10);
+    delay(1000);
   }
   TURN_MCC(0);
   unsigned long ending_millis = millis();
@@ -160,6 +162,7 @@ int score_team_B = 0;
 
 // Block last_ball; // Commented out Pixy2 Block object
 
+int direction_MCC = 0;
 
 void loop() {
   SERIAL_PRINTLN("loop");
@@ -173,16 +176,30 @@ void loop() {
   val = IR_sensor(val, detectorPins);
   SERIAL_PRINTLN(val);
   
-  if(buttonStateMCC1 == HIGH && buttonStateMCC2 == HIGH && buttonStateMOR == HIGH) {
+  */
+  if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1 && buttonStateMOR == 1) {
     // aucun bouton n'est pressé
-    TURN_MCC(50);
-    TURN_MOR(50);
+    if (digitalRead(13) == 1) {
+      TURN_MCC(50);
+    } else {
+      TURN_MCC(-50);
+    }
   } else {
     // l'un des bouton a été pressé
     TURN_MCC(0);
+  }
+
+  if( buttonStateMOR == 1) {
+    // aucun bouton n'est pressé
+    if (digitalRead(13) == 1) {
+      TURN_MOR(50);
+    } else {
+      TURN_MOR(-50);
+    }
+  } else {
+    // l'un des bouton a été pressé
     TURN_MOR(0);
   }
-  */
   delay(1000);
 }
 
@@ -367,18 +384,23 @@ void read_button(int buttonPin, int *var_stockage) {
   SERIAL_PRINTLN(*var_stockage);
 }
 
-void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue) {
+void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int *direction) {
   if (l_sensorValue <= 0) {
+    *direction = -1;
     int reversePWM = l_sensorValue;
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(reversePWM);
     analogWrite(pin_forward, 0);
     analogWrite(pin_reverse, reversePWM);
   } else {
+    *direction = 1;
     int forwardPWM = l_sensorValue;
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(forwardPWM);
     analogWrite(pin_forward, forwardPWM);
     analogWrite(pin_reverse, 0);
+  }
+  if (l_sensorValue==0) {
+    *direction = 0;
   }
 }
