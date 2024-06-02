@@ -1,6 +1,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoMatrix.h>
-#include <Pixy2.h>
+// #include <Pixy2.h> // Commented out Pixy2 library inclusion
 #include <RTClib.h>
 #include <Wire.h>
 
@@ -36,7 +36,7 @@ int current_MCC_pos = 0;
 int current_MOR_pos = 0;
 
 // Initialiser les composants
-Pixy2 pixy;
+// Pixy2 pixy; // Commented out Pixy2 object initialization
 Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
     32, 8, PIN_LED_MATRIX,
     NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS + NEO_MATRIX_ZIGZAG,
@@ -100,20 +100,65 @@ void setup() {
 
   Wire.begin();
   RTC.begin();
-  pixy.init();
+  // pixy.init(); // Commented out Pixy2 initialization
   Homing();
+  while(buttonStateMCC1==1 && buttonStateMCC1 ==1) { delay(10); }
+  calibrate_MCC();
 }
 
 // Macros pour simplifier les commandes des moteurs
 #define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x)
 #define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x)
 
+#define SENS_DEPLACEMENT 1 // de face: 1 <=> + => droite ; - => droite
+#define SPEED_FACTOR_MCC 200
+
+unsigned long percent_100 = 0; 
+
+//assume that we are at HOME
+void calibrate_MCC() {
+  read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
+  read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
+  read_button(PIN_HOME_MOR, &buttonStateMOR);
+  unsigned long starting_millis = millis();
+  TURN_MCC(SPEED_FACTOR_MCC);
+  delay(500);
+  while(buttonStateMCC1==1 && buttonStateMCC1 ==1) { 
+    read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
+    read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
+    read_button(PIN_HOME_MOR, &buttonStateMOR);
+    delay(10);
+  }
+  TURN_MCC(0);
+  unsigned long ending_millis = millis();
+  percent_100 = ending_millis - starting_millis;
+  SERIAL_PRINT("Total time=");
+  SERIAL_PRINTLN(percent_100);
+  current_MCC_pos = percent_100;
+}
+
+unsigned long MCC_to_percent(float percentage) {
+  unsigned long target = percent_100*percentage;
+  unsigned long diff_time;
+  if (current_MCC_pos>target) {
+    diff_time = current_MCC_pos - target;
+  } else {
+    diff_time = target - current_MCC_pos;
+  }
+  unsigned long time_to_stop = millis() + diff_time;
+  return time_to_stop;
+}
+
+unsigned long actualisation_pos( int *l_current_MCC_pos) {
+  *l_current_MCC_pos = 0;
+}
+
 // Variables pour la boucle principale
 int val = 0;
 int score_team_R = 0;
 int score_team_B = 0;
 
-Block last_ball;
+// Block last_ball; // Commented out Pixy2 Block object
 
 
 void loop() {
@@ -122,12 +167,12 @@ void loop() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
-
+  /*
   LED_matrix_score(score_team_R, score_team_B);
 
   val = IR_sensor(val, detectorPins);
   SERIAL_PRINTLN(val);
-
+  
   if(buttonStateMCC1 == HIGH && buttonStateMCC2 == HIGH && buttonStateMOR == HIGH) {
     // aucun bouton n'est pressé
     TURN_MCC(50);
@@ -137,29 +182,34 @@ void loop() {
     TURN_MCC(0);
     TURN_MOR(0);
   }
-  
-  delay(100);
+  */
+  delay(1000);
 }
 
 void Homing() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
-  while ((buttonStateMCC1==1 && buttonStateMCC1 ==1) || buttonStateMOR == 1) {
+  while (buttonStateMCC1==1 && buttonStateMCC1 ==1) {
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
-    read_button(PIN_HOME_MOR, &buttonStateMOR);
 
     if( buttonStateMCC1==1 && buttonStateMCC1 ==1 ) {
       TURN_MCC(50);
     } else {
       TURN_MCC(0);
     }
+    delay(500);
+  }
+  while (buttonStateMOR == 1) {
+    read_button(PIN_HOME_MOR, &buttonStateMOR);
+
     if( buttonStateMOR == 1 ) {
       TURN_MOR(50);
     } else {
       TURN_MOR(0);
     }
+    delay(500);
   }
 }
 
@@ -183,84 +233,84 @@ void LED_matrix_score(int score_B, int score_R) {
   matrix.show();
 }
 
-int last_index = -1;
-Block last_block;
-Block Pixy_cam() {
-  pixy.ccc.getBlocks();
-  if (pixy.ccc.numBlocks > 0) {
-    Block list_all[pixy.ccc.numBlocks];
-    for (int i = 0; i < pixy.ccc.numBlocks; i++) {
-      list_all[i] = pixy.ccc.blocks[i];
-    }
+// int last_index = -1; // Commented out Pixy2 variable
+// Block last_block; // Commented out Pixy2 variable
+// Block Pixy_cam() { // Commented out Pixy2 function
+//   pixy.ccc.getBlocks();
+//   if (pixy.ccc.numBlocks > 0) {
+//     Block list_all[pixy.ccc.numBlocks];
+//     for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+//       list_all[i] = pixy.ccc.blocks[i];
+//     }
 
-    int len = 0;
-    for (int i = 0; i < pixy.ccc.numBlocks; i++) {
-      if (list_all[i].m_signature == SIGNAL_SIGNATURE_BALL) {
-        len++;
-      }
-    }
+//     int len = 0;
+//     for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+//       if (list_all[i].m_signature == SIGNAL_SIGNATURE_BALL) {
+//         len++;
+//       }
+//     }
 
-    Block list_signal_ball[len];
-    int index = 0;
-    for (int i = 0; i < pixy.ccc.numBlocks; i++) {
-      if (list_all[i].m_signature == SIGNAL_SIGNATURE_BALL) {
-        list_signal_ball[index++] = list_all[i];
-      }
-    }
+//     Block list_signal_ball[len];
+//     int index = 0;
+//     for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+//       if (list_all[i].m_signature == SIGNAL_SIGNATURE_BALL) {
+//         list_signal_ball[index++] = list_all[i];
+//       }
+//     }
 
-    #define SCORE_TAILLE 10
-    #define SCORE_INDEX 100
-    #define SCORE_AGE 50
+//     #define SCORE_TAILLE 10
+//     #define SCORE_INDEX 100
+//     #define SCORE_AGE 50
 
-    int scores[len] = {0};
-    int best = 0;
+//     int scores[len] = {0};
+//     int best = 0;
 
-    for (int i = 0; i < len; i++) {
-      if (list_signal_ball[best].m_width * list_signal_ball[best].m_height <
-          list_signal_ball[i].m_width * list_signal_ball[i].m_height) {
-        best = i;
-      }
-    }
-    scores[best] += SCORE_TAILLE;
+//     for (int i = 0; i < len; i++) {
+//       if (list_signal_ball[best].m_width * list_signal_ball[best].m_height <
+//           list_signal_ball[i].m_width * list_signal_ball[i].m_height) {
+//         best = i;
+//       }
+//     }
+//     scores[best] += SCORE_TAILLE;
 
-    for (int i = 0; i < len; i++) {
-      if (list_signal_ball[i].m_index == last_index) {
-        best = i;
-      }
-    }
-    scores[best] += SCORE_INDEX;
+//     for (int i = 0; i < len; i++) {
+//       if (list_signal_ball[i].m_index == last_index) {
+//         best = i;
+//       }
+//     }
+//     scores[best] += SCORE_INDEX;
 
-    for (int i = 0; i < len; i++) {
-      if (list_signal_ball[best].m_age < list_signal_ball[i].m_age) {
-        best = i;
-      }
-    }
-    scores[best] += SCORE_AGE;
+//     for (int i = 0; i < len; i++) {
+//       if (list_signal_ball[best].m_age < list_signal_ball[i].m_age) {
+//         best = i;
+//       }
+//     }
+//     scores[best] += SCORE_AGE;
 
-    best = 0;
-    for (int i = 0; i < len; i++) {
-      if (scores[best] < scores[i]) {
-        best = i;
-      }
-    }
-    last_block = list_signal_ball[best];
-  }
-  return last_block;
-}
+//     best = 0;
+//     for (int i = 0; i < len; i++) {
+//       if (scores[best] < scores[i]) {
+//         best = i;
+//       }
+//     }
+//     last_block = list_signal_ball[best];
+//   }
+//   return last_block;
+// }
 
-void Pixy_cam_print() {
-  pixy.ccc.getBlocks();
-  if (pixy.ccc.numBlocks) {
-    SERIAL_PRINT("Detected ");
-    SERIAL_PRINTLN(pixy.ccc.numBlocks);
-    for (int i = 0; i < pixy.ccc.numBlocks; i++) {
-      SERIAL_PRINT("  block ");
-      SERIAL_PRINT(i);
-      SERIAL_PRINT(": ");
-      pixy.ccc.blocks[i].print();
-    }
-  }
-}
+// void Pixy_cam_print() { // Commented out Pixy2 function
+//   pixy.ccc.getBlocks();
+//   if (pixy.ccc.numBlocks) {
+//     SERIAL_PRINT("Detected ");
+//     SERIAL_PRINTLN(pixy.ccc.numBlocks);
+//     for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+//       SERIAL_PRINT("  block ");
+//       SERIAL_PRINT(i);
+//       SERIAL_PRINT(": ");
+//       pixy.ccc.blocks[i].print();
+//     }
+//   }
+// }
 
 int sensor_value = 200;
 void loop_moteur() {
@@ -311,18 +361,21 @@ int IR_sensor(int stockage_detection, int list_IR[5]) {
 
 void read_button(int buttonPin, int *var_stockage) {
   *var_stockage = digitalRead(buttonPin);
+  SERIAL_PRINT("Pin:");
+  SERIAL_PRINT(buttonPin);
+  SERIAL_PRINT("=");
   SERIAL_PRINTLN(*var_stockage);
 }
 
 void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue) {
-  if (l_sensorValue <= 512) {
-    int reversePWM = (l_sensorValue - 511) / 2;
+  if (l_sensorValue <= 0) {
+    int reversePWM = l_sensorValue;
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(reversePWM);
     analogWrite(pin_forward, 0);
     analogWrite(pin_reverse, reversePWM);
   } else {
-    int forwardPWM = (l_sensorValue - 512) / 2;
+    int forwardPWM = l_sensorValue;
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(forwardPWM);
     analogWrite(pin_forward, forwardPWM);
