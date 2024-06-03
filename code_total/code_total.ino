@@ -69,8 +69,8 @@ unsigned long last_time_MOR = 0;
 #define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
 #define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
 
-#define SENS_DEPLACEMENT 1 // de face: 1 <=> + => droite ; - => droite
 #define SPEED_FACTOR_MCC 200
+#define SPEED_FACTOR_MOR 100
 
 unsigned long percent_100 = 0; 
 
@@ -132,8 +132,8 @@ void setup() {
 #define MCC_PRECISION 100
 #define MOR_PRECISION 100
 #define ESTIMATED_MOR_MAX 1000
-#define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction)
-#define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction)
+#define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction, SPEED_FACTOR_MCC, current_MCC_pos)
+#define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction, SPEED_FACTOR_MOR, current_MOR_pos)
 
 
 //assume that we are at HOME
@@ -206,7 +206,7 @@ void loop() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
-  delay(500);
+  delay(50);
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
@@ -250,7 +250,7 @@ void loop() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
-  delay(500);
+  delay(50);
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
@@ -295,20 +295,29 @@ void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int
 }
 
 
-void  MOTOR_go_to(float percentage, int precision, unsigned long max_value,int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction){
-  unsigned long wanted_value = percentage*max_value;
-  if(current_MCC_pos > wanted_value - precision && current_MCC_pos < wanted_value + precision){
+void  MOTOR_go_to(float percentage, int precision, unsigned long max_value,int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction, int speed, unsigned long current_pos){
+  long wanted_value = percentage*max_value;
+  long diff_minus = wanted_value - precision;
+  long diff_plus = wanted_value + precision;
+  SERIAL_PRINT("downer: ");
+  SERIAL_PRINT(diff_minus);
+  SERIAL_PRINT(" upper: ");
+  SERIAL_PRINTLN(diff_plus);
+
+  if(current_pos > diff_minus && current_pos < diff_plus){
     SERIAL_PRINT("standing:");
     SERIAL_PRINTLN(pin_LPWM_Output);
     turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, 0, direction);
   } else {
     SERIAL_PRINT(pin_LPWM_Output);
     SERIAL_PRINT("wanting to go to:");
-    SERIAL_PRINTLN(wanted_value - current_MCC_pos);
-    if (wanted_value - current_MCC_pos > 0) {
-      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, SPEED_FACTOR_MCC, direction);
+    SERIAL_PRINTLN(wanted_value);
+    SERIAL_PRINT("diff");
+    SERIAL_PRINTLN(wanted_value - (long)current_pos);
+    if (wanted_value - (long)current_pos > 0) {
+      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, speed, direction);
     } else {
-      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, -SPEED_FACTOR_MCC, direction);
+      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, -speed, direction);
     }
   }
 }
