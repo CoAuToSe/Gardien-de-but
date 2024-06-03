@@ -69,7 +69,7 @@ unsigned long last_time_MOR = 0;
 #define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
 #define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
 
-#define SPEED_FACTOR_MCC 100
+#define SPEED_FACTOR_MCC 200
 #define SPEED_FACTOR_MOR 100
 
 unsigned long percent_100 = 10;
@@ -251,6 +251,12 @@ void loop() {
 
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
+  /*if(buttonStateMCC1 == 1) {
+    current_MCC_pos = 0;
+  }
+  if(buttonStateMCC2 == 1) {
+    current_MCC_pos = percent_100;
+  }*/
   if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
     if (x == 1 && y == 1) {
@@ -261,12 +267,7 @@ void loop() {
   } else {
     // l'un des bouton a été pressé
     TURN_MCC(0);
-    if(buttonStateMCC1 == 1) {
-      current_MCC_pos = 0;
-    }
-    if(buttonStateMCC2 == 1) {
-      current_MCC_pos = percent_100;
-    }
+    
   }
   /*
   SERIAL_PRINT("MOR ");
