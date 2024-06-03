@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 // Définir la macro pour le débogage série
-#define SERIAL_PRINT_ENABLED true
+#define SERIAL_PRINT_ENABLED false
 
 #if SERIAL_PRINT_ENABLED
 #define SERIAL_PRINT(x) Serial.print(x)
@@ -202,15 +202,6 @@ void loop() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
-  SERIAL_PRINT("MCC ");
-  ACTUAL_POS_MCC;
-  SERIAL_PRINT("MOR ");
-  ACTUAL_POS_MOR;
-  delay(50);
-  SERIAL_PRINT("MCC ");
-  ACTUAL_POS_MCC;
-  SERIAL_PRINT("MOR ");
-  ACTUAL_POS_MOR;
   
   /*
   LED_matrix_score(score_team_R, score_team_B);
@@ -219,9 +210,12 @@ void loop() {
   SERIAL_PRINTLN(val);
   
   */
+  int zae =digitalRead(13);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
   if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
-    if (digitalRead(13) == 1) {
+    if (zae == 1) {
       GO_TO_MCC(0.5);
     } else {
       GO_TO_MCC(0);
@@ -230,14 +224,12 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MCC(0);
   }
-  SERIAL_PRINT("MCC ");
-  ACTUAL_POS_MCC;
+
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
-
   if( buttonStateMOR == 1) {
     // aucun bouton n'est pressé
-    if (digitalRead(13) == 1) {
+    if (zae == 1) {
       GO_TO_MOR(0.5);
     } else {
       GO_TO_MOR(0);
@@ -246,15 +238,6 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MOR(0);
   }
-  SERIAL_PRINT("MCC ");
-  ACTUAL_POS_MCC;
-  SERIAL_PRINT("MOR ");
-  ACTUAL_POS_MOR;
-  delay(50);
-  SERIAL_PRINT("MCC ");
-  ACTUAL_POS_MCC;
-  SERIAL_PRINT("MOR ");
-  ACTUAL_POS_MOR;
 }
 /*
 #define MCC_PRECISION 100
