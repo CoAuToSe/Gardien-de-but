@@ -19,9 +19,9 @@
 
 // Définir les broches des composants
 #define PIN_LED_MATRIX 7
-#define PIN_HOME_1_MCC 3
-#define PIN_HOME_2_MCC 2
-#define PIN_HOME_MOR 4
+#define PIN_HOME_1_MCC 4
+#define PIN_HOME_2_MCC 3
+#define PIN_HOME_MOR 2
 #define PIN_IR { 18, 17, 16, 15, 14 }
 #define SIGNAL_SIGNATURE_BALL 2
 #define LED_BRIGHTNESS 10
@@ -85,9 +85,21 @@ unsigned long percent_100 = 10;
 #define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction, MCC_FACTOR*SPEED_FACTOR_MCC, current_MCC_pos)
 #define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction, SPEED_FACTOR_MOR, current_MOR_pos)
 
+
+// Variables pour la boucle principale
+int val = 0;
+int score_team_R = 6;
+int score_team_B = 6;
+
+Block last_ball; // Un-commented Pixy2 Block object
+Block last_last_ball; // Un-commented Pixy2 Block object
+
+int direction_MCC = 0;
+int state_team = 0;
+
+
 void setup() {
   
-  SERIAL_BEGIN(9600);
   int indzae = 0;
   SERIAL_PRINTLN(indzae);indzae++;
 
@@ -129,6 +141,8 @@ void setup() {
     pinMode(detectorPins[i], INPUT);
   }
   SERIAL_PRINTLN(indzae);indzae++;
+
+  SERIAL_BEGIN(9600);
   
   // Initialiser les composants
   matrix.begin();
@@ -136,14 +150,17 @@ void setup() {
   matrix.setBrightness(LED_BRIGHTNESS);
   matrix.setTextColor(matrix.Color(255, 0, 0));
   
-  SERIAL_PRINTLN(indzae);indzae++;
   Wire.begin();
+  RTC.begin();
+  //LED_matrix_score(score_team_R, score_team_B,state_team);
   
   SERIAL_PRINTLN(indzae);indzae++;
-  RTC.begin();
+  
+  SERIAL_PRINTLN(indzae);indzae++;
   SERIAL_PRINTLN(indzae);indzae++;
   pixy.init(); // Un-commented Pixy2 initialization
   
+  LED_matrix_score(score_team_B, score_team_R,state_team);
   SERIAL_PRINTLN(indzae);indzae++;
   
   Homing();
@@ -151,7 +168,7 @@ void setup() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
-  calibrate_MCC();
+  //calibrate_MCC();
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
@@ -160,6 +177,7 @@ void setup() {
     ACTUAL_POS_MCC;
     delay(10);
   }
+  
   
 }
 
@@ -202,6 +220,7 @@ unsigned long MCC_to_percent(float percentage) {
 }
 
 
+
 void actualisation_pos( int *l_current_MCC_pos, unsigned long *last_time, int *direction) {
   unsigned long current_time = millis();
   *l_current_MCC_pos =  *l_current_MCC_pos + (*direction)*(current_time-(*last_time));
@@ -209,17 +228,6 @@ void actualisation_pos( int *l_current_MCC_pos, unsigned long *last_time, int *d
   SERIAL_PRINT("current pos:");
   SERIAL_PRINTLN(*l_current_MCC_pos);
 }
-
-// Variables pour la boucle principale
-int val = 0;
-int score_team_R = 0;
-int score_team_B = 0;
-
-Block last_ball; // Un-commented Pixy2 Block object
-Block last_last_ball; // Un-commented Pixy2 Block object
-
-int direction_MCC = 0;
-int state_team = 0;
 
 void switch_team(int score) {
   if (state_team == 0) {
@@ -230,27 +238,27 @@ void switch_team(int score) {
     score_team_B += score;
   }
 }
+int goaled = 0;
 
 void loop() {
 
   SERIAL_PRINTLN("loop");
   //LED_matrix_score(0, 5);
   //delay(1000);
-  
+    
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
   
-  LED_matrix_score(score_team_R, score_team_B,state_team);
+  //LED_matrix_score(score_team_R, score_team_B,state_team);
   
-
+  /*
   val = IR_sensor(val, detectorPins);
   SERIAL_PRINTLN(val);
-  
-  LED_matrix_score(0, 5);
+  */
   
   Block ball = Pixy_cam();
-  ball.print();
+  //ball.print();
   float x = 1 - ((float)ball.m_x)/320;
   float y = 1 - ((float)ball.m_y)/200;
   SERIAL_PRINT("x=");
@@ -260,7 +268,6 @@ void loop() {
   int dx = last_ball.m_x - ball.m_x;
   int dy = last_ball.m_y - ball.m_y;
   
-  LED_matrix_score(0, 5);
 
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
@@ -283,9 +290,9 @@ void loop() {
     
   }
   
-
+/*
   //test si la balle est rentrée
-  if (ball == last_ball) {
+  if (ball.m_age == last_ball.m_age) {
     // la balle n'est plus visible
     int dx2 = last_ball.m_x - last_last_ball.m_x;
     int dy2 = last_ball.m_y - last_last_ball.m_y;
@@ -297,9 +304,15 @@ void loop() {
       //SERIAL_PRINTLN(val);
       val = 1 ; // assuming that the IR works correctly
       if (val > 0) {
-        add_goal(1);
+        if (state_team == 0) {
+          state_team = 1;
+          score_team_R = score_team_R + 1;
+        } else if (state_team == 1) {
+          state_team = 0;
+          score_team_B = score_team_B + 1;
+        }
         goaled == 1;
-        LED_matrix_GOAL();
+        //LED_matrix_GOAL();
       }
     } else {
       // ball going up, so impossible to goal 
@@ -311,7 +324,7 @@ void loop() {
     last_ball = ball;
     goaled = 0;
   }
-
+*/
 
   /*
   SERIAL_PRINT("MOR ");
@@ -400,7 +413,7 @@ void Homing() {
   }
   //delay(5000);
   TURN_MCC(0);
-/*
+  /*
   while (buttonStateMOR == 1) {
     SERIAL_PRINTLN("MOR");
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
@@ -527,7 +540,7 @@ Block Pixy_cam() { // Un-commented Pixy2 function
   }
   return last_block;
 }
-
+/*
 void Pixy_cam_print() { // Un-commented Pixy2 function
   pixy.ccc.getBlocks();
   if (pixy.ccc.numBlocks) {
@@ -559,7 +572,7 @@ int IR_sensor(int stockage_detection, int list_IR[5]) {
   }
   return stockage_detection;
 }
-
+*/
 void read_button(int buttonPin, int *var_stockage) {
   *var_stockage = digitalRead(buttonPin);
   SERIAL_PRINT("Pin:");
