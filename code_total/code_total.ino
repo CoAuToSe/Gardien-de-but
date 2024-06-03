@@ -19,8 +19,8 @@
 
 // Définir les broches des composants
 #define PIN_LED_MATRIX 7
-#define PIN_HOME_1_MCC 2
-#define PIN_HOME_2_MCC 3
+#define PIN_HOME_1_MCC 3
+#define PIN_HOME_2_MCC 2
 #define PIN_HOME_MOR 4
 #define PIN_IR { 18, 17, 16, 15, 14 }
 #define SIGNAL_SIGNATURE_BALL 2
@@ -69,7 +69,7 @@ unsigned long last_time_MOR = 0;
 #define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
 #define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
 
-#define SPEED_FACTOR_MCC 200
+#define SPEED_FACTOR_MCC 100
 #define SPEED_FACTOR_MOR 100
 
 unsigned long percent_100 = 10;
@@ -77,8 +77,19 @@ unsigned long percent_100 = 10;
 #define ACTUAL_POS_MCC actualisation_pos(&current_MCC_pos, &last_time_MCC, &MCC_direction)
 #define ACTUAL_POS_MOR actualisation_pos(&current_MOR_pos, &last_time_MOR, &MOR_direction)
 
+
+#define MCC_PRECISION 0.10
+#define MOR_PRECISION 0.10
+#define ESTIMATED_MOR_MAX 1000
+#define MCC_FACTOR 1
+#define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction, MCC_FACTOR*SPEED_FACTOR_MCC, current_MCC_pos)
+#define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction, SPEED_FACTOR_MOR, current_MOR_pos)
+
 void setup() {
+  
   SERIAL_BEGIN(9600);
+  int indzae = 0;
+  SERIAL_PRINTLN(indzae);indzae++;
 
   // Configurer les broches des composants
   pinMode(PIN_HOME_1_MCC, OUTPUT);
@@ -88,38 +99,53 @@ void setup() {
     pinMode(detectorPins[i], OUTPUT);
   }
 
+  SERIAL_PRINTLN(indzae);indzae++;
   digitalWrite(PIN_HOME_1_MCC, LOW);
   digitalWrite(PIN_HOME_2_MCC, LOW);
   digitalWrite(PIN_HOME_MOR, LOW);
   for (int i = 0; i < 5; i++) {
     digitalWrite(detectorPins[i], LOW);
   }
+  
 
+  SERIAL_PRINTLN(indzae);indzae++;
   pinMode(PIN_HOME_1_MCC, INPUT);
   pinMode(PIN_HOME_2_MCC, INPUT);
   pinMode(PIN_HOME_MOR, INPUT);
 
+  SERIAL_PRINTLN(indzae);indzae++;
   pinMode(MCC_RPWM_Output, OUTPUT);
   pinMode(MCC_LPWM_Output, OUTPUT);
   pinMode(MOR_RPWM_Output, OUTPUT);
   pinMode(MOR_LPWM_Output, OUTPUT);
 
+  analogWrite(MCC_RPWM_Output, 0);
+  analogWrite(MCC_LPWM_Output, 0);
+  analogWrite(MOR_RPWM_Output, 0);
+  analogWrite(MOR_LPWM_Output, 0);
+
   pinMode(PIN_LED_MATRIX, OUTPUT);
   for (int i = 0; i < 5; i++) {
     pinMode(detectorPins[i], INPUT);
   }
-
+  SERIAL_PRINTLN(indzae);indzae++;
+  
   // Initialiser les composants
   matrix.begin();
   matrix.setTextWrap(false);
   matrix.setBrightness(LED_BRIGHTNESS);
   matrix.setTextColor(matrix.Color(255, 0, 0));
-
+  
+  SERIAL_PRINTLN(indzae);indzae++;
   Wire.begin();
+  
+  SERIAL_PRINTLN(indzae);indzae++;
   RTC.begin();
+  SERIAL_PRINTLN(indzae);indzae++;
   pixy.init(); // Un-commented Pixy2 initialization
   
-  /*
+  SERIAL_PRINTLN(indzae);indzae++;
+  
   Homing();
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
@@ -130,29 +156,31 @@ void setup() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
-  */
+  while(GO_TO_MCC(0.5)) { 
+    ACTUAL_POS_MCC;
+    delay(10);
+  }
+  
 }
-
-#define MCC_PRECISION 100
-#define MOR_PRECISION 100
-#define ESTIMATED_MOR_MAX 1000
-#define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction, SPEED_FACTOR_MCC, current_MCC_pos)
-#define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction, SPEED_FACTOR_MOR, current_MOR_pos)
 
 //assume that we are at HOME
 void calibrate_MCC() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   unsigned long starting_millis = millis();
+  SERIAL_PRINT("MCC ");
   TURN_MCC(SPEED_FACTOR_MCC);
-  delay(5000); // necessary 500
+  delay(1000); // necessary 500
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
-  while(buttonStateMCC1==1 && buttonStateMCC1 ==1) { 
+  while( buttonStateMCC2 ==1) { 
+    TURN_MCC(SPEED_FACTOR_MCC);
+    SERIAL_PRINT("MCC ");
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
-    delay(1000);
+    //delay(10);
   }
+  SERIAL_PRINT("MCC ");
   TURN_MCC(0);
   unsigned long ending_millis = millis();
   percent_100 = ending_millis - starting_millis;
@@ -192,44 +220,55 @@ Block last_ball; // Un-commented Pixy2 Block object
 int direction_MCC = 0;
 
 void loop() {
-  SERIAL_PRINTLN("loop");
 
+  SERIAL_PRINTLN("loop");
+  //LED_matrix_score(0, 5);
+  //delay(1000);
+  
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
   
-  /*
-  LED_matrix_score(score_team_R, score_team_B);
+  LED_matrix_score(0, 5);
+  
 
   val = IR_sensor(val, detectorPins);
   SERIAL_PRINTLN(val);
   
-  */
-  delay(1000);
+  LED_matrix_score(0, 5);
+  
   Block ball = Pixy_cam();
   ball.print();
-  int x = 320 - ball.m_x;
-  int y = 200 - ball.m_y;
+  float x = 1 - ((float)ball.m_x)/320;
+  float y = 1 - ((float)ball.m_y)/200;
+  SERIAL_PRINT("x=");
+  SERIAL_PRINTLN(x);
   //reversed because vision is reversed
   int dx = last_ball.m_x - ball.m_x;
   int dy = last_ball.m_y - ball.m_y;
   
+  LED_matrix_score(0, 5);
 
-  int zae = digitalRead(13);
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
   if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
-    if (zae == 1) {
-      GO_TO_MCC(x/320);
-    } else {
-      GO_TO_MCC(0);
+    if (x == 1 && y == 1) {
+      GO_TO_MCC(0.5);
+    }else {
+      GO_TO_MCC(max(min(x,0.95),0.05));
     }
   } else {
     // l'un des bouton a été pressé
     TURN_MCC(0);
+    if(buttonStateMCC1 == 1) {
+      current_MCC_pos = 0;
+    }
+    if(buttonStateMCC2 == 1) {
+      current_MCC_pos = percent_100;
+    }
   }
-
+  /*
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
   if( buttonStateMOR == 1) {
@@ -242,20 +281,22 @@ void loop() {
   } else {
     // l'un des bouton a été pressé
     TURN_MOR(0);
-  }
+  }*/
+  
+  
 }
 
 void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int *direction) {
   if (l_sensorValue <= 0) {
     *direction = -1;
-    int reversePWM = l_sensorValue;
+    int reversePWM = abs(l_sensorValue);
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(reversePWM);
     analogWrite(pin_forward, 0);
     analogWrite(pin_reverse, reversePWM);
   } else {
     *direction = 1;
-    int forwardPWM = l_sensorValue;
+    int forwardPWM = abs(l_sensorValue);
     SERIAL_PRINT("turning at ");
     SERIAL_PRINTLN(forwardPWM);
     analogWrite(pin_forward, forwardPWM);
@@ -266,10 +307,10 @@ void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int
   }
 }
 
-void MOTOR_go_to(float percentage, int precision, unsigned long max_value, int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction, int speed, unsigned long current_pos) {
+bool MOTOR_go_to(float percentage, int precision, unsigned long max_value, int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction, int speed, unsigned long current_pos) {
   long wanted_value = percentage * max_value;
-  long diff_minus = wanted_value - precision;
-  long diff_plus = wanted_value + precision;
+  long diff_minus = wanted_value - precision*max_value;
+  long diff_plus = wanted_value + precision*max_value;
   SERIAL_PRINT("downer: ");
   SERIAL_PRINT(diff_minus);
   SERIAL_PRINT(" upper: ");
@@ -279,6 +320,7 @@ void MOTOR_go_to(float percentage, int precision, unsigned long max_value, int p
     SERIAL_PRINT("standing:");
     SERIAL_PRINTLN(pin_LPWM_Output);
     turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, 0, direction);
+    return true;
   } else {
     SERIAL_PRINT(pin_LPWM_Output);
     SERIAL_PRINT("wanting to go to:");
@@ -290,6 +332,7 @@ void MOTOR_go_to(float percentage, int precision, unsigned long max_value, int p
     } else {
       turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, -speed, direction);
     }
+    return false;
   }
 }
 
@@ -298,17 +341,25 @@ void Homing() {
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
   while (buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
+    SERIAL_PRINTLN("MCC");
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
+    SERIAL_PRINT(digitalRead(4));
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
+    read_button(PIN_HOME_MOR, &buttonStateMOR);
 
     if (buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
-      TURN_MCC(-50);
+      TURN_MCC(-SPEED_FACTOR_MCC);
     } else {
       TURN_MCC(0);
     }
-    delay(500);
   }
+  //delay(5000);
+  TURN_MCC(0);
+/*
   while (buttonStateMOR == 1) {
+    SERIAL_PRINTLN("MOR");
+    read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
+    read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
     read_button(PIN_HOME_MOR, &buttonStateMOR);
 
     if (buttonStateMOR == 1) {
@@ -316,8 +367,9 @@ void Homing() {
     } else {
       TURN_MOR(0);
     }
-    delay(500);
   }
+  TURN_MOR(0);
+  */
 }
 
 void LED_matrix_score(int score_B, int score_R) {
