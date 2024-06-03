@@ -129,6 +129,11 @@ void setup() {
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
 }
+#define MCC_PRECISION 100
+#define MOR_PRECISION 100
+#define ESTIMATED_MOR_MAX 1000
+#define GO_TO_MCC(x) MOTOR_go_to(x, MCC_PRECISION, percent_100,      MCC_LPWM_Output, MCC_RPWM_Output, &MCC_direction)
+#define GO_TO_MOR(x) MOTOR_go_to(x, MOR_PRECISION, ESTIMATED_MOR_MAX,MOR_LPWM_Output, MOR_RPWM_Output, &MOR_direction)
 
 
 //assume that we are at HOME
@@ -165,13 +170,14 @@ unsigned long MCC_to_percent(float percentage) {
   return time_to_stop;
 }
 
+/*
 unsigned long actualisation_pos_MCC( int *l_current_MCC_pos) {
   unsigned long current_time = millis();
   *l_current_MCC_pos =  *l_current_MCC_pos + MCC_direction*(current_time-last_time_MCC);
   last_time_MCC = current_time;
   SERIAL_PRINT("current MCC pos:");
   SERIAL_PRINTLN(*l_current_MCC_pos);
-}
+}*/
 
 void actualisation_pos( int *l_current_MCC_pos, unsigned long *last_time, int *direction) {
   unsigned long current_time = millis();
@@ -216,9 +222,9 @@ void loop() {
   if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
     if (digitalRead(13) == 1) {
-      TURN_MCC(50);
+      GO_TO_MCC(0.5);
     } else {
-      TURN_MCC(-50);
+      GO_TO_MCC(0);
     }
   } else {
     // l'un des bouton a été pressé
@@ -232,9 +238,9 @@ void loop() {
   if( buttonStateMOR == 1) {
     // aucun bouton n'est pressé
     if (digitalRead(13) == 1) {
-      TURN_MOR(50);
+      GO_TO_MOR(0.5);
     } else {
-      TURN_MOR(-50);
+      GO_TO_MOR(0);
     }
   } else {
     // l'un des bouton a été pressé
@@ -249,6 +255,62 @@ void loop() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
+}
+/*
+#define MCC_PRECISION 100
+void  MCC_go_to(float percentage){
+  unsigned long wanted_value = percentage*percent_100;
+  if(current_MCC_pos > wanted_value - MCC_PRECISION && current_MCC_pos < wanted_value + MCC_PRECISION){
+    TURN_MCC(0);
+  } else {
+    if (wanted_value - current_MCC_pos > 0) {
+      TURN_MCC(SPEED_FACTOR_MCC);
+    } else {
+      TURN_MCC(-SPEED_FACTOR_MCC);
+    }
+  }
+}
+*/
+
+
+void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int *direction) {
+  if (l_sensorValue <= 0) {
+    *direction = -1;
+    int reversePWM = l_sensorValue;
+    SERIAL_PRINT("turning at ");
+    SERIAL_PRINTLN(reversePWM);
+    analogWrite(pin_forward, 0);
+    analogWrite(pin_reverse, reversePWM);
+  } else {
+    *direction = 1;
+    int forwardPWM = l_sensorValue;
+    SERIAL_PRINT("turning at ");
+    SERIAL_PRINTLN(forwardPWM);
+    analogWrite(pin_forward, forwardPWM);
+    analogWrite(pin_reverse, 0);
+  }
+  if (l_sensorValue==0) {
+    *direction = 0;
+  }
+}
+
+
+void  MOTOR_go_to(float percentage, int precision, unsigned long max_value,int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction){
+  unsigned long wanted_value = percentage*max_value;
+  if(current_MCC_pos > wanted_value - precision && current_MCC_pos < wanted_value + precision){
+    SERIAL_PRINT("standing:");
+    SERIAL_PRINTLN(pin_LPWM_Output);
+    turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, 0, direction);
+  } else {
+    SERIAL_PRINT(pin_LPWM_Output);
+    SERIAL_PRINT("wanting to go to:");
+    SERIAL_PRINTLN(wanted_value - current_MCC_pos);
+    if (wanted_value - current_MCC_pos > 0) {
+      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, SPEED_FACTOR_MCC, direction);
+    } else {
+      turn_driver_moteur(pin_LPWM_Output, pin_MCC_RPWM_Output, -SPEED_FACTOR_MCC, direction);
+    }
+  }
 }
 
 void Homing() {
@@ -432,25 +494,4 @@ void read_button(int buttonPin, int *var_stockage) {
   SERIAL_PRINT(buttonPin);
   SERIAL_PRINT("=");
   SERIAL_PRINTLN(*var_stockage);
-}
-
-void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int *direction) {
-  if (l_sensorValue <= 0) {
-    *direction = -1;
-    int reversePWM = l_sensorValue;
-    SERIAL_PRINT("turning at ");
-    SERIAL_PRINTLN(reversePWM);
-    analogWrite(pin_forward, 0);
-    analogWrite(pin_reverse, reversePWM);
-  } else {
-    *direction = 1;
-    int forwardPWM = l_sensorValue;
-    SERIAL_PRINT("turning at ");
-    SERIAL_PRINTLN(forwardPWM);
-    analogWrite(pin_forward, forwardPWM);
-    analogWrite(pin_reverse, 0);
-  }
-  if (l_sensorValue==0) {
-    *direction = 0;
-  }
 }
