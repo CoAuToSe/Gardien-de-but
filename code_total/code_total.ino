@@ -60,6 +60,23 @@ unsigned long previousMillis1s = 0;
 const long interval10s = 10000;
 const long interval1s = 1000;
 
+
+int MCC_direction = 0;
+int MOR_direction = 0;
+unsigned long last_time_MCC = 0;
+unsigned long last_time_MOR = 0;
+// Macros pour simplifier les commandes des moteurs
+#define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
+#define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
+
+#define SENS_DEPLACEMENT 1 // de face: 1 <=> + => droite ; - => droite
+#define SPEED_FACTOR_MCC 200
+
+unsigned long percent_100 = 0; 
+
+#define ACTUAL_POS_MCC actualisation_pos(&current_MCC_pos, &last_time_MCC, &MCC_direction)
+#define ACTUAL_POS_MOR actualisation_pos(&current_MOR_pos, &last_time_MOR, &MOR_direction)
+
 void setup() {
   SERIAL_BEGIN(9600);
 
@@ -102,22 +119,17 @@ void setup() {
   RTC.begin();
   // pixy.init(); // Commented out Pixy2 initialization
   Homing();
-  while(buttonStateMCC1==1 && buttonStateMCC1 ==1) { delay(10); }
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
   calibrate_MCC();
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
 }
 
-int MCC_direction = 0;
-int MOR_direction = 0;
-unsigned long last_time_MCC = 0;
-unsigned long last_time_MOR = 0;
-// Macros pour simplifier les commandes des moteurs
-#define TURN_MCC(x) turn_driver_moteur(MCC_LPWM_Output, MCC_RPWM_Output, x, &MCC_direction)
-#define TURN_MOR(x) turn_driver_moteur(MOR_LPWM_Output, MOR_RPWM_Output, x, &MOR_direction)
-
-#define SENS_DEPLACEMENT 1 // de face: 1 <=> + => droite ; - => droite
-#define SPEED_FACTOR_MCC 200
-
-unsigned long percent_100 = 0; 
 
 //assume that we are at HOME
 void calibrate_MCC() {
@@ -139,7 +151,6 @@ void calibrate_MCC() {
   SERIAL_PRINT("Total time=");
   SERIAL_PRINTLN(percent_100);
   current_MCC_pos = percent_100;
-  actualisation_pos_MCC(&current_MCC_pos);
 }
 
 unsigned long MCC_to_percent(float percentage) {
@@ -162,6 +173,14 @@ unsigned long actualisation_pos_MCC( int *l_current_MCC_pos) {
   SERIAL_PRINTLN(*l_current_MCC_pos);
 }
 
+void actualisation_pos( int *l_current_MCC_pos, unsigned long *last_time, int *direction) {
+  unsigned long current_time = millis();
+  *l_current_MCC_pos =  *l_current_MCC_pos + (*direction)*(current_time-(*last_time));
+  *last_time = current_time;
+  SERIAL_PRINT("current pos:");
+  SERIAL_PRINTLN(*l_current_MCC_pos);
+}
+
 // Variables pour la boucle principale
 int val = 0;
 int score_team_R = 0;
@@ -177,9 +196,15 @@ void loop() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
-  actualisation_pos_MCC(&current_MCC_pos);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
   delay(500);
-  actualisation_pos_MCC(&current_MCC_pos);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
   
   /*
   LED_matrix_score(score_team_R, score_team_B);
@@ -188,7 +213,7 @@ void loop() {
   SERIAL_PRINTLN(val);
   
   */
-  if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1 && buttonStateMOR == 1) {
+  if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
     if (digitalRead(13) == 1) {
       TURN_MCC(50);
@@ -199,7 +224,10 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MCC(0);
   }
-  actualisation_pos_MCC(&current_MCC_pos);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
 
   if( buttonStateMOR == 1) {
     // aucun bouton n'est pressé
@@ -212,9 +240,15 @@ void loop() {
     // l'un des bouton a été pressé
     TURN_MOR(0);
   }
-  actualisation_pos_MCC(&current_MCC_pos);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
   delay(500);
-  actualisation_pos_MCC(&current_MCC_pos);
+  SERIAL_PRINT("MCC ");
+  ACTUAL_POS_MCC;
+  SERIAL_PRINT("MOR ");
+  ACTUAL_POS_MOR;
 }
 
 void Homing() {
@@ -226,7 +260,7 @@ void Homing() {
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
 
     if( buttonStateMCC1==1 && buttonStateMCC1 ==1 ) {
-      TURN_MCC(50);
+      TURN_MCC(-50);
     } else {
       TURN_MCC(0);
     }
@@ -236,7 +270,7 @@ void Homing() {
     read_button(PIN_HOME_MOR, &buttonStateMOR);
 
     if( buttonStateMOR == 1 ) {
-      TURN_MOR(50);
+      TURN_MOR(-50);
     } else {
       TURN_MOR(0);
     }
