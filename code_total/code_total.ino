@@ -216,8 +216,20 @@ int score_team_R = 0;
 int score_team_B = 0;
 
 Block last_ball; // Un-commented Pixy2 Block object
+Block last_last_ball; // Un-commented Pixy2 Block object
 
 int direction_MCC = 0;
+int state_team = 0;
+
+void switch_team(int score) {
+  if (state_team == 0) {
+    state_team = 1;
+    score_team_R += score;
+  } else if (state_team == 1) {
+    state_team = 0;
+    score_team_B += score;
+  }
+}
 
 void loop() {
 
@@ -229,7 +241,7 @@ void loop() {
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
   
-  LED_matrix_score(0, 5);
+  LED_matrix_score(score_team_R, score_team_B,state_team);
   
 
   val = IR_sensor(val, detectorPins);
@@ -244,6 +256,7 @@ void loop() {
   SERIAL_PRINT("x=");
   SERIAL_PRINTLN(x);
   //reversed because vision is reversed
+  // needs to be assured that at the begining the command is not too strong because of init values 
   int dx = last_ball.m_x - ball.m_x;
   int dy = last_ball.m_y - ball.m_y;
   
@@ -269,6 +282,37 @@ void loop() {
     TURN_MCC(0);
     
   }
+  
+
+  //test si la balle est rentrée
+  if (ball == last_ball) {
+    // la balle n'est plus visible
+    int dx2 = last_ball.m_x - last_last_ball.m_x;
+    int dy2 = last_ball.m_y - last_last_ball.m_y;
+    if (dy2 > 0) {
+      // ball going down
+      
+      
+      //val = IR_sensor(val, detectorPins);
+      //SERIAL_PRINTLN(val);
+      val = 1 ; // assuming that the IR works correctly
+      if (val > 0) {
+        add_goal(1);
+        goaled == 1;
+        LED_matrix_GOAL();
+      }
+    } else {
+      // ball going up, so impossible to goal 
+      goaled = 1;
+    }
+
+  } else {
+    last_last_ball = last_ball;
+    last_ball = ball;
+    goaled = 0;
+  }
+
+
   /*
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
@@ -373,7 +417,7 @@ void Homing() {
   */
 }
 
-void LED_matrix_score(int score_B, int score_R) {
+void LED_matrix_score(int score_B, int score_R, int l_state_team) {
   matrix.fillScreen(0);
   matrix.setCursor(0, 0);
 
@@ -383,12 +427,27 @@ void LED_matrix_score(int score_B, int score_R) {
 
   matrix.setTextColor(matrix.Color(0, 0, 255));
   matrix.print(score_B);
-
-  matrix.setTextColor(matrix.Color(255, 255, 255));
+  //matrix.setTextColor(matrix.Color(255, 255, 255));
+  if (l_state_team == 0) {
+    matrix.setTextColor(matrix.Color(255, 0, 0));
+  } else if (l_state_team == 1) {
+    matrix.setTextColor(matrix.Color(0, 0, 255));
+  } else {
+    matrix.setTextColor(matrix.Color(255, 255, 255));
+  }
   matrix.print("/");
 
   matrix.setTextColor(matrix.Color(255, 0, 0));
   matrix.print(score_R);
+
+  matrix.show();
+}
+void LED_matrix_GOAL() {
+  matrix.fillScreen(0);
+  matrix.setCursor(0, 0);
+
+  matrix.setTextColor(matrix.Color(72, 0, 172));
+  matrix.print("GOAL");
 
   matrix.show();
 }
