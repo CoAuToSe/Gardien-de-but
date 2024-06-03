@@ -295,7 +295,7 @@ void turn_driver_moteur(int pin_forward, int pin_reverse, int l_sensorValue, int
 }
 
 
-void  MOTOR_go_to(float percentage, int precision, unsigned long max_value,int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction, int speed, unsigned long current_pos){
+void MOTOR_go_to(float percentage, int precision, unsigned long max_value,int pin_LPWM_Output, int pin_MCC_RPWM_Output, int *direction, int speed, unsigned long current_pos){
   long wanted_value = percentage*max_value;
   long diff_minus = wanted_value - precision;
   long diff_plus = wanted_value + precision;
@@ -326,11 +326,11 @@ void Homing() {
   read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
   read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
   read_button(PIN_HOME_MOR, &buttonStateMOR);
-  while (buttonStateMCC1==1 && buttonStateMCC1 ==1) {
+  while (buttonStateMCC1==1 && buttonStateMCC2 ==1) {
     read_button(PIN_HOME_1_MCC, &buttonStateMCC1);
     read_button(PIN_HOME_2_MCC, &buttonStateMCC2);
 
-    if( buttonStateMCC1==1 && buttonStateMCC1 ==1 ) {
+    if( buttonStateMCC1==1 && buttonStateMCC2 ==1 ) {
       TURN_MCC(-50);
     } else {
       TURN_MCC(0);
