@@ -5,7 +5,7 @@
 #include <Wire.h>
 
 // Définir la macro pour le débogage série
-#define SERIAL_PRINT_ENABLED false
+#define SERIAL_PRINT_ENABLED true
 
 #if SERIAL_PRINT_ENABLED
 #define SERIAL_PRINT(x) Serial.print(x)
@@ -72,7 +72,7 @@ unsigned long last_time_MOR = 0;
 #define SPEED_FACTOR_MCC 200
 #define SPEED_FACTOR_MOR 100
 
-unsigned long percent_100 = 0;
+unsigned long percent_100 = 10;
 
 #define ACTUAL_POS_MCC actualisation_pos(&current_MCC_pos, &last_time_MCC, &MCC_direction)
 #define ACTUAL_POS_MOR actualisation_pos(&current_MOR_pos, &last_time_MOR, &MOR_direction)
@@ -118,6 +118,8 @@ void setup() {
   Wire.begin();
   RTC.begin();
   pixy.init(); // Un-commented Pixy2 initialization
+  
+  /*
   Homing();
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
@@ -128,6 +130,7 @@ void setup() {
   ACTUAL_POS_MCC;
   SERIAL_PRINT("MOR ");
   ACTUAL_POS_MOR;
+  */
 }
 
 #define MCC_PRECISION 100
@@ -202,13 +205,23 @@ void loop() {
   SERIAL_PRINTLN(val);
   
   */
+  delay(1000);
+  Block ball = Pixy_cam();
+  ball.print();
+  int x = 320 - ball.m_x;
+  int y = 200 - ball.m_y;
+  //reversed because vision is reversed
+  int dx = last_ball.m_x - ball.m_x;
+  int dy = last_ball.m_y - ball.m_y;
+  
+
   int zae = digitalRead(13);
   SERIAL_PRINT("MCC ");
   ACTUAL_POS_MCC;
   if(buttonStateMCC1 == 1 && buttonStateMCC2 == 1) {
     // aucun bouton n'est pressé
     if (zae == 1) {
-      GO_TO_MCC(0.5);
+      GO_TO_MCC(x/320);
     } else {
       GO_TO_MCC(0);
     }
@@ -222,7 +235,7 @@ void loop() {
   if( buttonStateMOR == 1) {
     // aucun bouton n'est pressé
     if (zae == 1) {
-      GO_TO_MOR(0.5);
+      GO_TO_MOR(100*atan2(dy,dx));// 100 in a random factor currently
     } else {
       GO_TO_MOR(0);
     }
